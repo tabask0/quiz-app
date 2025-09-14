@@ -44,14 +44,14 @@ function App() {
   const handleStartQuiz = () => {
     // Reset email session when starting quiz to prevent spam
     resetEmailSession();
-    
+
     // Record quiz start time for termination protection
     try {
       localStorage.setItem("networking-quiz-start-time", Date.now().toString());
     } catch (error) {
       console.warn("Failed to set quiz start time:", error);
     }
-    
+
     setIsQuizStarted(true);
   };
 
