@@ -225,17 +225,17 @@ export async function sendNotificationEmail(
       candidate_name: candidateName,
       candidate_email: data.candidateEmail || "Not provided",
       notification_type: isCompletion ? "completion" : "termination",
-      score: data.score || 0,
-      total_questions: data.totalQuestions,
-      percentage: data.percentage || 0,
-      correct_answers: data.correctAnswers || 0,
-      incorrect_answers: data.incorrectAnswers || 0,
+      score: String(data.score || 0),
+      total_questions: String(data.totalQuestions),
+      percentage: String(data.percentage || 0),
+      correct_answers: String(data.correctAnswers || 0),
+      incorrect_answers: String(data.incorrectAnswers || 0),
       completion_time: data.completionTime || "",
       termination_reason: data.terminationReason || "",
       termination_time: data.terminationTime || "",
-      questions_answered: data.questionsAnswered || 0,
-      partial_score: data.partialScore || 0,
-      detailed_results: formatDetailedResults(data.detailedResults || []),
+      questions_answered: String(data.questionsAnswered || 0),
+      partial_score: String(data.partialScore || 0),
+      detailed_results: formatSimpleResults(data.detailedResults || []),
       message: isCompletion
         ? `Quiz completed by ${candidateName}. Score: ${data.percentage}% (${data.score}/${data.totalQuestions})`
         : `Quiz terminated for ${candidateName}. Reason: ${data.terminationReason}`,
@@ -287,9 +287,9 @@ export async function sendTerminationEmail(
 }
 
 /**
- * Format detailed results for email
+ * Format simple results for email - only questions with answers and final score
  */
-function formatDetailedResults(
+function formatSimpleResults(
   results: NotificationData["detailedResults"]
 ): string {
   if (!results || results.length === 0) {
@@ -298,29 +298,13 @@ function formatDetailedResults(
 
   return results
     .map((result, index) => {
-      let resultText = `\n${index + 1}. ${result.question}\n`;
-      resultText += `   Category: ${result.category}\n`;
-      resultText += `   Type: ${result.type}\n`;
-      resultText += `   Status: ${
-        result.isCorrect ? "✓ Correct" : "✗ Incorrect"
-      }\n`;
+      let resultText = `${index + 1}. ${result.question}`;
+      resultText += ` - ${result.isCorrect ? "Correct" : "Incorrect"}`;
 
       if (result.type === "coding" && result.codeScore) {
-        resultText += `   Code Score: ${result.codeScore.score}%\n`;
-        resultText += `   Feedback: ${result.codeScore.feedback}\n`;
-        if (result.codeScore.matchedKeywords.length > 0) {
-          resultText += `   Matched Keywords: ${result.codeScore.matchedKeywords.join(
-            ", "
-          )}\n`;
-        }
-        if (result.codeScore.missingKeywords.length > 0) {
-          resultText += `   Missing Keywords: ${result.codeScore.missingKeywords.join(
-            ", "
-          )}\n`;
-        }
+        resultText += ` (Code Score: ${result.codeScore.score}%)`;
       } else {
-        resultText += `   User Answer: ${result.userAnswer || "No answer"}\n`;
-        resultText += `   Correct Answer: ${result.correctAnswer || "N/A"}\n`;
+        resultText += ` (Answer: ${result.userAnswer || "No answer"})`;
       }
 
       return resultText;
