@@ -197,7 +197,6 @@ export const useQuiz = (questions: Question[]) => {
       }
     });
 
-    const percentage = Math.round((correctCount / questions.length) * 100);
     const averageScore = Math.round(totalScore / questions.length);
 
     return {

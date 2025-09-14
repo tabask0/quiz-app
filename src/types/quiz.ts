@@ -36,8 +36,8 @@ export interface QuizResult {
     category: string;
     type: string;
     isCorrect: boolean;
-    userAnswer?: number[] | string;
-    correctAnswer?: number[] | string;
+    userAnswer?: string;
+    correctAnswer?: string;
     codeScore?: {
       score: number;
       feedback: string;

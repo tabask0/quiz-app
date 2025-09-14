@@ -24,9 +24,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <div className="text-lg font-semibold text-blue-600">
           Question {questionNumber} of {totalQuestions}
         </div>
-        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-          {question.category}
-        </Badge>
+        <div className="flex gap-2">
+          <Badge
+            variant={question.type === "multiple" ? "default" : "secondary"}
+            className={
+              question.type === "multiple"
+                ? "bg-orange-100 text-orange-800 border-orange-200"
+                : "bg-green-100 text-green-800 border-green-200"
+            }
+          >
+            {question.type === "multiple" ? "Multi-Select" : "Single-Select"}
+          </Badge>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+            {question.category}
+          </Badge>
+        </div>
       </CardHeader>
 
       <CardContent className="pt-6">
@@ -35,7 +47,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         </h2>
 
         <div className="space-y-4 mb-6">
-          {question.options.map((option, index) => {
+          {question.options?.map((option, index) => {
             const isSelected = selectedAnswers.includes(index);
             const isMultiple = question.type === "multiple";
 
@@ -76,10 +88,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           })}
         </div>
 
-        <div className="text-center text-sm text-gray-600 italic">
+        <div
+          className={`text-center text-sm font-medium px-4 py-2 rounded-lg ${
+            question.type === "multiple"
+              ? "bg-orange-50 text-orange-700 border border-orange-200"
+              : "bg-green-50 text-green-700 border border-green-200"
+          }`}
+        >
           {question.type === "multiple"
-            ? "Select all that apply"
-            : "Select one answer"}
+            ? "📋 Select all that apply (multiple answers allowed)"
+            : "🎯 Select one answer only"}
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Editor } from "@monaco-editor/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 interface CodeEditorProps {
@@ -24,7 +24,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   questionNumber,
   totalQuestions,
 }) => {
-  const [isEditorReady, setIsEditorReady] = useState(false);
+  const [, setIsEditorReady] = useState(false);
 
   const handleEditorDidMount = () => {
     setIsEditorReady(true);
@@ -37,6 +37,12 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           Question {questionNumber} of {totalQuestions}
         </div>
         <div className="flex gap-2">
+          <Badge
+            variant="default"
+            className="bg-purple-100 text-purple-800 border-purple-200"
+          >
+            💻 Coding Question
+          </Badge>
           <Badge variant="secondary" className="bg-blue-100 text-blue-800">
             {question.category}
           </Badge>
