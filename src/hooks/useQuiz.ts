@@ -5,6 +5,7 @@ import { calculateCodeScore } from "../utils/codeScoring";
 import {
   sendQuizCompletionEmail,
   getCurrentTimestamp,
+  resetEmailSession,
 } from "../utils/notifications";
 
 export const useQuiz = (questions: Question[]) => {
@@ -241,6 +242,9 @@ export const useQuiz = (questions: Question[]) => {
     } catch (error) {
       console.warn("Failed to clear quiz state from localStorage:", error);
     }
+
+    // Reset email session to prevent spam
+    resetEmailSession();
 
     setQuizState({
       currentQuestionIndex: 0,

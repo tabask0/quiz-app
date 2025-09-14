@@ -1,69 +1,106 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   sendTerminationEmail,
   getCurrentTimestamp,
+  getEmailStatus,
 } from "../utils/notifications";
+
+// Import email limit constant
+const MAX_EMAILS_PER_HOUR = 2;
 
 const AntiInspection: React.FC = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
   const [failureReason, setFailureReason] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{
+    recentEmails: Array<{ timestamp: number; type: string }>;
+    canSendCompletion: boolean;
+    canSendTermination: boolean;
+    timeUntilNextEmail: number;
+  } | null>(null);
   const terminationTriggered = useRef(false);
 
   // Function to handle termination and send notification
-  const handleTermination = async (reason: string) => {
-    // Prevent multiple terminations using ref for immediate check
-    if (terminationTriggered.current || showFailure || emailSent) {
-      return;
-    }
+  const handleTermination = useCallback(
+    async (reason: string) => {
+      // Prevent multiple terminations using ref for immediate check
+      if (terminationTriggered.current || showFailure || emailSent) {
+        return;
+      }
 
-    // Mark as triggered immediately
-    terminationTriggered.current = true;
-    setFailureReason(reason);
-    setShowFailure(true);
-    setEmailSent(true);
-    localStorage.clear();
-
-    // Send termination email notification
-    try {
-      // Get current progress from localStorage before clearing
-      const savedState = localStorage.getItem("networking-quiz-state");
-      let questionsAnswered = 0;
-      let partialScore = 0;
-
-      if (savedState) {
-        try {
-          const parsed = JSON.parse(savedState);
-          questionsAnswered =
-            Object.keys(parsed.answers || {}).length +
-            Object.keys(parsed.codeAnswers || {}).length;
-          // Calculate partial score if possible
-          partialScore =
-            questionsAnswered > 0
-              ? Math.round((questionsAnswered / 40) * 100)
-              : 0;
-        } catch (error) {
-          console.warn(
-            "Failed to parse saved state for termination notification:",
-            error
-          );
+      // Additional protection: Check if quiz has been running for at least 10 seconds
+      const quizStartTime = localStorage.getItem("networking-quiz-start-time");
+      if (quizStartTime) {
+        const timeSinceStart = Date.now() - parseInt(quizStartTime);
+        if (timeSinceStart < 10000) {
+          // 10 seconds minimum
+          console.warn("Termination blocked: Quiz not running long enough");
+          return;
         }
       }
 
-      await sendTerminationEmail({
-        candidateName: "Candidate", // You can add a name input field later
-        candidateEmail: "candidate@example.com", // You can add an email input field later
-        terminationReason: reason,
-        terminationTime: getCurrentTimestamp(),
-        questionsAnswered,
-        totalQuestions: 40,
-        partialScore,
-      });
-    } catch (error) {
-      console.error("Failed to send termination notification:", error);
-    }
-  };
+      // Mark as triggered immediately
+      terminationTriggered.current = true;
+      setFailureReason(reason);
+      setShowFailure(true);
+      setEmailSent(true);
+      localStorage.clear();
+
+      // Send termination email notification
+      try {
+        // Get current progress from localStorage before clearing
+        const savedState = localStorage.getItem("networking-quiz-state");
+        let questionsAnswered = 0;
+        let partialScore = 0;
+
+        if (savedState) {
+          try {
+            const parsed = JSON.parse(savedState);
+            questionsAnswered =
+              Object.keys(parsed.answers || {}).length +
+              Object.keys(parsed.codeAnswers || {}).length;
+            // Calculate partial score if possible
+            partialScore =
+              questionsAnswered > 0
+                ? Math.round((questionsAnswered / 40) * 100)
+                : 0;
+          } catch (error) {
+            console.warn(
+              "Failed to parse saved state for termination notification:",
+              error
+            );
+          }
+        }
+
+        await sendTerminationEmail({
+          candidateName: "Candidate", // You can add a name input field later
+          candidateEmail: "candidate@example.com", // You can add an email input field later
+          terminationReason: reason,
+          terminationTime: getCurrentTimestamp(),
+          questionsAnswered,
+          totalQuestions: 40,
+          partialScore,
+        });
+      } catch (error) {
+        console.error("Failed to send termination notification:", error);
+      }
+    },
+    [showFailure, emailSent]
+  );
+
+  // Check email status periodically
+  useEffect(() => {
+    const checkEmailStatus = () => {
+      const status = getEmailStatus();
+      setEmailStatus(status);
+    };
+
+    checkEmailStatus();
+    const interval = setInterval(checkEmailStatus, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Disable right-click context menu
@@ -117,6 +154,18 @@ const AntiInspection: React.FC = () => {
       return false;
     };
 
+    // Detect page refresh/reload
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show warning if quiz is actually started
+      const quizStartTime = localStorage.getItem("networking-quiz-start-time");
+      if (quizStartTime) {
+        e.preventDefault();
+        e.returnValue =
+          "Are you sure you want to leave? Your progress will be lost.";
+        return "Are you sure you want to leave? Your progress will be lost.";
+      }
+    };
+
     // Single tab switching detection - only use visibility change
     const handleVisibilityChange = () => {
       if (document.hidden && !terminationTriggered.current) {
@@ -139,6 +188,7 @@ const AntiInspection: React.FC = () => {
     document.addEventListener("dragstart", handleDragStart);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Disable DevTools detection
     let devtools = false;
@@ -171,12 +221,13 @@ const AntiInspection: React.FC = () => {
       document.removeEventListener("dragstart", handleDragStart);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       clearInterval(interval);
 
       // Reset termination trigger on cleanup
       terminationTriggered.current = false;
     };
-  }, []);
+  }, [handleTermination]);
 
   if (showFailure) {
     return (
@@ -206,6 +257,36 @@ const AntiInspection: React.FC = () => {
                 external resources will result in immediate termination.
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show email limit warning if approaching limit
+  if (
+    emailStatus &&
+    emailStatus.recentEmails &&
+    emailStatus.recentEmails.length >= 1
+  ) {
+    return (
+      <div className="fixed top-4 right-4 z-40 bg-yellow-100 border border-yellow-300 rounded-lg p-4 max-w-sm shadow-lg">
+        <div className="flex items-center">
+          <div className="text-2xl mr-3">📧</div>
+          <div>
+            <h3 className="font-semibold text-yellow-800">
+              Email Limit Warning
+            </h3>
+            <p className="text-sm text-yellow-700">
+              {emailStatus.recentEmails.length}/{MAX_EMAILS_PER_HOUR} emails
+              sent this hour
+            </p>
+            {emailStatus.timeUntilNextEmail > 0 && (
+              <p className="text-xs text-yellow-600">
+                Next email allowed in{" "}
+                {Math.ceil(emailStatus.timeUntilNextEmail / 1000)}s
+              </p>
+            )}
           </div>
         </div>
       </div>

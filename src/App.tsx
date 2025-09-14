@@ -6,6 +6,7 @@ import CodeEditor from "./components/CodeEditor";
 import QuizNavigation from "./components/QuizNavigation";
 import QuizResults from "./components/QuizResults";
 import AntiInspection from "./components/AntiInspection";
+import { resetEmailSession } from "./utils/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function App() {
@@ -41,6 +42,16 @@ function App() {
   }, []);
 
   const handleStartQuiz = () => {
+    // Reset email session when starting quiz to prevent spam
+    resetEmailSession();
+    
+    // Record quiz start time for termination protection
+    try {
+      localStorage.setItem("networking-quiz-start-time", Date.now().toString());
+    } catch (error) {
+      console.warn("Failed to set quiz start time:", error);
+    }
+    
     setIsQuizStarted(true);
   };
 
